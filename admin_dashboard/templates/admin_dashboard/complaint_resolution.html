@@ -1,0 +1,89 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Complaint Resolution Center</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f4f8; padding: 20px; }
+        h1 { color: #9b59b6; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .complaint-section { margin-bottom: 40px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .complaint-card { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 6px; }
+        .complaint-card p { margin: 5px 0; }
+        .form-action { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 15px; }
+        textarea, select, button { padding: 8px; border-radius: 4px; }
+        .btn-update { background-color: #2ecc71; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>💬 Complaint Resolution Center</h1>
+    <p>Review and update the status of all open complaints from Residents and Workers.</p>
+    <a href="{% url 'admin_monitoring_dashboard' %}" style="color: #3498db;">&larr; Back to Dashboard</a>
+
+    <div class="complaint-section">
+        <h2 style="color: #e74c3c;">Resident Complaints ({{ resident_complaints.count }} Open)</h2>
+        {% for complaint in resident_complaints %}
+        <div class="complaint-card">
+            <p><strong>ID:</strong> #{{ complaint.id }} | <strong>Type:</strong> {{ complaint.get_complaint_type_display }}</p>
+            <p><strong>Resident:</strong> {{ complaint.resident.household_id }} (Ward {{ complaint.resident.ward_number }}) | <strong>Reported:</strong> {{ complaint.submission_time|date:"Y-m-d H:i" }}</p>
+            <p><strong>Details:</strong> {{ complaint.details }}</p>
+            <p><strong>Proof:</strong> {% if complaint.proof_file %}<a href="{{ complaint.proof_file.url }}" target="_blank">View File</a>{% else %}N/A{% endif %}</p>
+            
+            <form method="post" class="form-action">
+                {% csrf_token %}
+                <input type="hidden" name="id" value="{{ complaint.id }}">
+                <input type="hidden" name="type" value="RESIDENT">
+
+                <div>
+                    <label>Notes:</label>
+                    <textarea name="notes" rows="2" cols="40">{{ complaint.resolution_notes|default:"" }}</textarea>
+                </div>
+                
+                <div>
+                    <label>Status:</label>
+                    <select name="status">
+                        <option value="IN_PROGRESS" {% if complaint.status == 'IN_PROGRESS' %}selected{% endif %}>In Progress</option>
+                        <option value="RESOLVED" {% if complaint.status == 'RESOLVED' %}selected{% endif %}>Resolved</option>
+                        <option value="PENDING" {% if complaint.status == 'PENDING' %}selected{% endif %}>Pending Review</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn-update">Update Status</button>
+            </form>
+        </div>
+        {% empty %}
+            <p>No pending resident complaints.</p>
+        {% endfor %}
+    </div>
+
+    <div class="complaint-section">
+        <h2 style="color: #f39c12;">Worker Field Issues ({{ worker_complaints.count }} Pending)</h2>
+        {% for complaint in worker_complaints %}
+        <div class="complaint-card">
+            <p><strong>ID:</strong> #{{ complaint.id }} | <strong>Worker:</strong> {{ complaint.worker.worker_id }}</p>
+            <p><strong>Issue Type:</strong> {{ complaint.get_issue_type_display }} | <strong>Reported:</strong> {{ complaint.submission_time|date:"Y-m-d H:i" }}</p>
+            <p><strong>Details:</strong> {{ complaint.details }}</p>
+            <p><strong>Proof:</strong> {% if complaint.proof_file %}<a href="{{ complaint.proof_file.url }}" target="_blank">View File</a>{% else %}N/A{% endif %}</p>
+            
+            <form method="post" class="form-action">
+                {% csrf_token %}
+                <input type="hidden" name="id" value="{{ complaint.id }}">
+                <input type="hidden" name="type" value="WORKER">
+
+                <div>
+                    <label>Status:</label>
+                    <select name="status">
+                        <option value="PENDING" {% if complaint.status == 'PENDING' %}selected{% endif %}>Pending</option>
+                        <option value="RESOLVED" {% if complaint.status == 'RESOLVED' %}selected{% endif %}>Resolved</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn-update">Resolve Issue</button>
+            </form>
+        </div>
+        {% empty %}
+            <p>No pending worker field issues.</p>
+        {% endfor %}
+    </div>
+</body>
+</html>

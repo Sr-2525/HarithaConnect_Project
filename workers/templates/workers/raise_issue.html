@@ -1,0 +1,36 @@
+{% extends "workers/base.html" %}
+
+{% block title %}Report Field Issue{% endblock %}
+
+{% block content %}
+    <h1>Report Field Issue (Worker Complaint)</h1>
+    <p>Use this form to report problems encountered on the field (e.g., vehicle issues, safety hazards, access problems).</p>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div style="border: 1px solid #ccc; padding: 20px; border-radius: 8px;">
+            <table style="width: 100%;">
+                {{ form.as_table }}
+            </table>
+        </div>
+        <button type="submit" 
+                class="btn btn-warning" 
+                style="margin-top: 20px; padding: 12px 25px; font-size: 1.2em;">
+            Submit Field Complaint
+        </button>
+    </form>
+
+    {% if open_complaints %}
+        <h2 style="margin-top: 40px;">Your Open Issues</h2>
+        <ul style="list-style: none; padding: 0;">
+            {% for complaint in open_complaints %}
+                <li style="border: 1px solid #ff9800; padding: 10px; margin-bottom: 10px; background-color: #fff3e0;">
+                    Issue **{{ complaint.issue_type }}** submitted {{ complaint.submission_time|date:"Y-m-d" }}. Status: {{ complaint.get_status_display }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <br><br></b>
+    <a href="{% url 'worker_dashboard' %}" class="back-link">&larr; Back to Dashboard</a>
+{% endblock %}

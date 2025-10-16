@@ -1,0 +1,97 @@
+{% extends "workers/base.html" %}
+
+{% block title %}Worker History{% endblock %}
+
+{% block content %}
+    <h1>📚 Your Work History</h1>
+
+    <p style="margin-top: 20px;">Review your past collections, payments confirmed, and issues reported.</p>
+
+    <h2 style="margin-top: 30px; border-bottom: 2px solid #0d47a1; padding-bottom: 5px;">Collection History</h2>
+    {% if collection_history %}
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #f5f7fa;">
+                    <th style="padding: 10px; text-align: left;">Household ID</th>
+                    <th style="padding: 10px; text-align: left;">Date</th>
+                    <th style="padding: 10px; text-align: left;">Time Cleared</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for assignment in collection_history %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; font-weight: bold;">{{ assignment.household_id }}</td>
+                    <td style="padding: 10px;">{{ assignment.assignment_date|date:"Y-m-d" }}</td>
+                    <td style="padding: 10px;">{{ assignment.collection_time|date:"H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No collections recorded yet.</p>
+    {% endif %}
+
+    <h2 style="margin-top: 40px; border-bottom: 2px solid #0d47a1; padding-bottom: 5px;">Payment Confirmation History</h2>
+    {% if payment_history %}
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #f5f7fa;">
+                    <th style="padding: 10px; text-align: left;">Household ID</th>
+                    <th style="padding: 10px; text-align: left;">Amount</th>
+                    <th style="padding: 10px; text-align: left;">Date Confirmed</th>
+                    <th style="padding: 10px; text-align: left;">Receipt No.</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payment_history %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; font-weight: bold;">{{ payment.resident.household_id }}</td>
+                    <td style="padding: 10px; color: #388e3c; font-weight: bold;">₹{{ payment.amount }}</td>
+                    <td style="padding: 10px;">{{ payment.payment_date|date:"Y-m-d H:i" }}</td>
+                    <td style="padding: 10px;">
+                        {% if payment.receipt_photo %}
+                        <a href="{{ payment.receipt_photo.url }}" target="_blank">View Receipt</a>
+                        {% else %}
+                        N/A
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>You have not confirmed any offline payments yet.</p>
+    {% endif %}
+
+    <h2 style="margin-top: 40px; border-bottom: 2px solid #0d47a1; padding-bottom: 5px;">Reported Issues History</h2>
+    {% if complaint_history %}
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #f5f7fa;">
+                    <th style="padding: 10px; text-align: left;">Issue Type</th>
+                    <th style="padding: 10px; text-align: left;">Status</th>
+                    <th style="padding: 10px; text-align: left;">Submitted On</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for complaint in complaint_history %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; font-weight: bold;">{{ complaint.get_issue_type_display }}</td>
+                    <td style="padding: 10px;">
+                        {% if complaint.status == 'RESOLVED' %}
+                            <span style="color: green; font-weight: bold;">{{ complaint.get_status_display }}</span>
+                        {% else %}
+                            <span style="color: orange; font-weight: bold;">{{ complaint.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 10px;">{{ complaint.submission_time|date:"Y-m-d H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>You have not reported any field issues yet.</p>
+    {% endif %}
+    
+    <a href="{% url 'worker_dashboard' %}" class="back-link" style="margin-top: 30px; display: block;">&larr; Back to Dashboard</a>
+{% endblock %}

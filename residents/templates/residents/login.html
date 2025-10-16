@@ -1,0 +1,50 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Resident Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #38761d; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); width: 350px; }
+        h2 { text-align: center; color: #38761d; margin-bottom: 25px; } 
+        form div { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #6aa84f; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        button:hover { background-color: #38761d; }
+        .messages { list-style: none; padding: 0; margin: 0; }
+        .messages li { margin-bottom: 10px; padding: 10px; border-radius: 4px; font-weight: bold; }
+        .messages .error { background-color: #f8d7da; color: #721c24; }
+        .messages .success { background-color: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>Haritha Connect | Resident Login</h2>
+
+        {% if messages %}
+            {% for message in messages %}
+                <ul class="messages">
+                    <li class="{{ message.tags }}">{{ message }}</li>
+                </ul>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %} 
+
+            <div>
+                <label for="id_username">Username:</label>
+                <input type="text" name="username" id="id_username" required>
+            </div>
+            <div>
+                <label for="id_password">Password:</label>
+                <input type="password" name="password" id="id_password" required>
+            </div>
+
+            <button type="submit">Log In</button>
+        </form>
+    </div>
+</body>
+</html>

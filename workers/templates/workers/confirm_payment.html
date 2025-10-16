@@ -1,0 +1,55 @@
+{% extends "workers/base.html" %}
+
+{% block title %}Confirm Payments{% endblock %}
+
+{% block content %}
+    <h1>💰 Confirm Resident Offline Payments</h1>
+    <p>This list shows payments reported by residents as cash payments. 
+        <br>Confirm them only after verifying the cash receipt or transfer.</p>
+
+    {% if unconfirmed_payments %}
+        <p style="font-weight: bold; color: #e53935; margin-bottom: 20px;">
+            You have {{ unconfirmed_payments.count }} payment(s) pending confirmation.
+        </p>
+
+        <div style="display: grid; gap: 15px;">
+            {% for payment in unconfirmed_payments %}
+
+            <div style="border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <p style="font-size: 1.1em; font-weight: bold; color: #0d47a1;">
+                    Household ID: {{ payment.resident.household_id }}
+                </p>
+                <p>
+                    Amount Due: <strong style="color: #4CAF50;">₹{{ payment.amount }}</strong><br>
+                    Receipt No: {{ payment.receipt_number|default:"N/A" }}<br>
+                    Reported On: {{ payment.payment_date|date:"Y-m-d H:i" }}
+                </p>
+
+                <p style="margin-top: 15px;"> 
+                    {% if payment.receipt_photo %}
+                    <a href="{{ payment.receipt_photo.url }}" target="_blank" class="btn" style="background-color: #3498db; color: white; margin-right: 10px;">View Receipt Photo</a>
+                    {% else %}
+                    <span style="color: #c0392b; font-weight: bold;">No Photo Proof Available</span>
+                    {% endif %}
+                </p>
+
+                <form method="post" action="{% url 'confirm_offline_payment' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="payment_id" value="{{ payment.id }}">
+
+                    <button type="submit" 
+                            onclick="return confirm('Confirm you received this payment?');"
+                            class="btn btn-success">
+                        Confirm Received
+                    </button>
+                </form>
+            </div>
+
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>There are currently no reported offline payments requiring your confirmation.</p>
+    {% endif %}
+
+     <a href="{% url 'worker_dashboard' %}" class="back-link">&larr; Back to Dashboard</a>
+{% endblock %}

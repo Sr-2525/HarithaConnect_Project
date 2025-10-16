@@ -1,0 +1,64 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Priority Pickup Management</title>
+   <style>
+    body { font-family: Arial, sans-serif; background-color: #f0f4f8; padding: 20px; }
+    h1 { color: #e74c3c; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+    .alert-card { background: white; border: 1px solid #e74c3c; padding: 15px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .alert-card strong { color: #333; }
+    .action-form { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    select, button { padding: 8px; border-radius: 4px; }
+    .btn-assign { background-color: #2ecc71; color: white; border: none; cursor: pointer; }
+    .btn-close { background-color: #e74c3c; color: white; border: none; cursor: pointer; }
+</style>
+</head>
+<body>
+    <h1>🚨 Priority Pickup Management (Bin Full Alerts)</h1>
+    <p>Unassigned/Pending Alerts: **{{ pending_alerts.count }}**</p>
+    <a href="{% url 'admin_monitoring_dashboard' %}" style="color: #3498db;">&larr; Back to Dashboard</a>
+
+    <div style="margin-top: 20px;">
+        {% for alert in pending_alerts %}
+        <div class="alert-card">
+            <h3>Alert #{{ alert.id }} from {{ alert.resident.household_id }} (Ward {{ alert.resident.ward_number }})</h3>
+            <p><strong>Location:</strong> {{ alert.location_detail }}</p>
+            <p><strong>Reported:</strong> {{ alert.alert_time|date:"Y-m-d H:i" }}</p>
+            <p><strong>Current Status:</strong> <span style="color: {% if alert.status == 'ASSIGNED' %}#3498db{% else %}#e74c3c{% endif %}; font-weight: bold;">{{ alert.get_status_display }}</span></p>
+
+            <p><strong>Resident Proof:</strong> <a href="{{ alert.photo_proof.url }}" target="_blank">View Photo</a></p>
+
+            <form method="post" class="action-form">
+                {% csrf_token %}
+                <input type="hidden" name="alert_id" value="{{ alert.id }}">
+                
+                {% if alert.status != 'CLEARED' %}
+                    <label>Assign to:</label>
+                    <select name="worker_id" required>
+                        {% for worker in all_workers %}
+                            <option value="{{ worker.id }}" {% if alert.worker_assigned == worker %}selected{% endif %}>
+                                {{ worker.worker_id }} ({{ worker.user.username }})
+                            </option>
+                        {% empty %}
+                            <option value="">No Workers Available</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" name="action" value="ASSIGN" class="btn-assign">Assign Team</button>
+
+                    <button type="submit" name="action" value="CLOSE" class="btn-close" 
+                            onclick="return confirm('Are you sure you want to forcibly mark this alert as CLEARED?');">
+                        Admin Close
+                    </button>
+                {% else %}
+                    <p style="color: green;">Alert resolved by {{ alert.worker_assigned.worker_id }}.</p>
+                {% endif %}
+            </form>
+        </div>
+        {% empty %}
+            <p style="color: green;">No priority alerts currently require manual assignment.</p>
+        {% endfor %}
+    </div>
+</body>
+</html>

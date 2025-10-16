@@ -1,0 +1,28 @@
+{% extends "workers/base.html" %}
+
+{% block title %}Complete Collection{% endblock %}
+
+{% block content %}
+    <h1>Complete Collection: {{ household_id }}</h1>
+    <p>You are marking the collection complete for household <strong>{{ household_id }}</strong>.</p>
+    <p>Please upload a photo showing the cleared bin area for verification.</p>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div style="border: 1px solid #ccc; padding: 20px; border-radius: 8px;">
+            <table style="width: 100%;">
+                {{ form.as_table }}
+            </table>
+        </div>
+
+        <button type="submit" 
+        class="btn btn-success" 
+        style="margin-top: 20px; padding: 12px 25px; font-size: 1.2em;">
+    Confirm Collection & Upload Proof
+</button>
+    </form>
+
+    <p style="margin-top: 30px;"><a href="{% url 'worker_dashboard' %}">&larr; Back to Dashboard</a></p>
+
+{% endblock %}

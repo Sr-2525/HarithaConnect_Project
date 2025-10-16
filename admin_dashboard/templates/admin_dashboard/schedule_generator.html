@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Monthly Schedule Generator - Haritha Connect</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 0; }
+        .header { background-color: #2c3e50; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header a { color: white; text-decoration: none; margin-left: 20px; padding: 8px 15px; border: 1px solid white; border-radius: 4px; transition: background-color 0.3s; }
+        .header a:hover { background-color: #34495e; }
+        .content { padding: 20px; max-width: 800px; margin: auto; }
+        h1 { color: #2c3e50; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .form-card { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            border-left: 5px solid #2ecc71; 
+        }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        th { font-weight: bold; }
+        .errorlist { color: #e74c3c; list-style: none; padding: 0; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Haritha Connect | Generate Monthly Collection Route</h1>
+        <div>
+            <a href="{% url 'admin_monitoring_dashboard' %}">Monitoring Dashboard</a>
+            <a href="{% url 'admin:index' %}">Django Admin Panel</a>
+            <a href="{% url 'resident_logout' %}">Logout</a> 
+        </div>
+    </div>
+
+    <div class="content">
+        <h1>🗓️ HKS Route Generation Tool (10-Day Cycle)</h1>
+        <p>This tool automatically generates 10 days of collection assignments (approx. 50 households/day per worker) for the team assigned to the selected ward.</p>
+        
+        <form method="post" class="form-card">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="errorlist">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <table>
+                {{ form.as_table }} 
+            </table>
+            
+            <button type="submit" 
+                    style="background-color: #2ecc71; color: white; padding: 12px 25px; border: none; border-radius: 4px; margin-top: 20px; font-weight: bold;">
+                Generate Route for Month
+            </button>
+        </form>
+
+        <h3 style="margin-top: 40px;">⚠️ Operational Notes:</h3>
+        <ul>
+            <li>The Ward **must** have a configured team in the **Manage Ward Teams** section.</li>
+            <li>Schedule starts on the 5th of the target month.</li>
+        </ul>
+    </div>
+</body>
+</html>
