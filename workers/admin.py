@@ -117,3 +117,4 @@ admin.site.register(CollectionAssignment, CollectionAssignmentAdmin)
 admin.site.register(WorkerComplaint, WorkerComplaintAdmin)
 admin.site.register(SupervisorProfile, SupervisorProfileAdmin)
 admin.site.register(HKSWardAssignment, HKSWardAssignmentAdmin)
+

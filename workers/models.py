@@ -92,6 +92,7 @@ class WorkerComplaint(models.Model):
     worker = models.ForeignKey(WorkerProfile, on_delete=models.CASCADE)
 
     ISSUE_CHOICES = [ 
+        ('ABSENCE', 'Worker Absence/Sick Leave'),
         ('VEHICLE', 'Vehicle/Truck Breakdown'),
         ('ACCESS', 'Access/Lockout Issue'),
         ('SAFETY', 'Safety/Hazardous Waste'),

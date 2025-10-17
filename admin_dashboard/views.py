@@ -2,12 +2,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages 
 from django.utils import timezone
-from django.db import models as db_models
 from django.db.models import Q # Used for complex queries
 from django.contrib.auth.models import User
 from datetime import timedelta, date
 
-from .forms import ScheduleGenerationForm, DailyTaskAssignmentForm, UserOnboardingForm # Added UserOnboardingForm here
+from .forms import ScheduleGenerationForm, DailyTaskAssignmentForm, UserOnboardingForm
 from residents.models import BinFullAlert, ResidentComplaint, Payment, BillingDue 
 from workers.models import WorkerProfile, CollectionAssignment, WorkerComplaint, HKSWardAssignment, SupervisorProfile
 
@@ -22,14 +21,12 @@ def is_superuser(user):
 def admin_monitoring_dashboard(request):
     today = timezone.localdate()
 
-    # --- 1. Workflow Monitoring (KPIs) ---
     pending_alerts = BinFullAlert.objects.filter(status='PENDING').count()
     pending_complaints_res = ResidentComplaint.objects.filter(status='PENDING').count()
     pending_complaints_wkr = WorkerComplaint.objects.filter(status='PENDING').count()
     unconfirmed_payments = Payment.objects.filter(is_paid_online=False, worker_who_received_cash__isnull=True).count()
     overdue_bills = BillingDue.objects.filter(is_paid=False, due_date__lt=today).count()
-
-    # --- 2. Collection Progress Today ---
+    
     total_assignments_today = CollectionAssignment.objects.filter(assignment_date=today).count()
     collected_assignments_today = CollectionAssignment.objects.filter(assignment_date=today, is_collected=True).count()
 
@@ -71,10 +68,9 @@ def generate_monthly_schedule(request):
 
         workers = [w for w in [assignment_config.worker1, assignment_config.worker2] if w is not None]
 
-        # Core HKS Logic (Assumes 500 households, 10-day cycle)
         HOUSEHOLDS_IN_WARD = 500 
         COLLECTION_DAYS = 10
-        DAILY_TEAM_TARGET = HOUSEHOLDS_IN_WARD // COLLECTION_DAYS # 50 houses
+        DAILY_TEAM_TARGET = HOUSEHOLDS_IN_WARD // COLLECTION_DAYS
         DAILY_INDIVIDUAL_TARGET = DAILY_TEAM_TARGET // 2 if len(workers) == 2 else DAILY_TEAM_TARGET 
         
         try:
@@ -98,12 +94,10 @@ def generate_monthly_schedule(request):
                 w1_households = daily_households[:DAILY_INDIVIDUAL_TARGET]
                 w2_households = daily_households[DAILY_INDIVIDUAL_TARGET:]
                 
-                # Prepare Worker 1's tasks
                 for household_id in w1_households:
                     tasks_to_create.append(CollectionAssignment(
                         worker=workers[0], assignment_date=current_date, household_id=household_id, collection_cycle_day=day + 1
                     ))
-                # Prepare Worker 2's tasks
                 for household_id in w2_households:
                     tasks_to_create.append(CollectionAssignment(
                         worker=workers[1], assignment_date=current_date, household_id=household_id, collection_cycle_day=day + 1
@@ -128,7 +122,6 @@ def generate_monthly_schedule(request):
 @login_required(login_url='admin:login')
 @user_passes_test(is_superuser, login_url='admin:login')
 def priority_pickup_management(request):
-    # Fetch all pending alerts (those needing action)
     pending_alerts = BinFullAlert.objects.filter(status__in=['PENDING', 'ASSIGNED']).order_by('-alert_time')
     all_workers = WorkerProfile.objects.all()
 
@@ -203,8 +196,6 @@ def assign_daily_task(request):
     if request.method == 'POST' and form.is_valid():
         ward_id = form.cleaned_data['ward']
         target_date = form.cleaned_data['target_date']
-        # house_start = form.cleaned_data['house_start'] # Not used in mock creation
-        # house_end = form.cleaned_data['house_end'] # Not used in mock creation
 
         try:
             assignment_config = HKSWardAssignment.objects.get(ward_id=ward_id)
@@ -215,7 +206,7 @@ def assign_daily_task(request):
             messages.error(request, f"Error: No HKS team assigned to Ward {ward_id}.")
             return redirect('assign_daily_task')
 
-        mock_household_ids = [f"{ward_id}-MOCK-H{i}" for i in range(5)] # Create 5 mock tasks
+        mock_household_ids = [f"{ward_id}-MOCK-H{i}" for i in range(5)]
         tasks_to_create = []
 
         for worker in workers:
@@ -225,7 +216,7 @@ def assign_daily_task(request):
                     assignment_date=target_date,
                     household_id=household_id,
                     is_collected=False,
-                    collection_cycle_day=0 # Mark as one-off assignment
+                    collection_cycle_day=0
                 ))
 
         created_tasks = CollectionAssignment.objects.bulk_create(tasks_to_create, ignore_conflicts=True)

@@ -82,31 +82,46 @@ class DailyTaskAssignmentForm(forms.Form):
 # ====================================================================
 # C. User Onboarding Form (For Creating Workers/Supervisors)
 # ====================================================================
-class UserOnboardingForm(forms.Form):
-    PROFILE_CHOICES = [
-        ('WORKER', 'HKS Worker'),
-        ('SUPERVISOR', 'HKS Supervisor'),
-    ]
+# admin_dashboard/forms.py (Add this form)
+# ... other forms ...
 
+class UserOnboardingForm(forms.Form):
+    # Django User fields
     username = forms.CharField(max_length=150, label="Username")
     password = forms.CharField(widget=forms.PasswordInput, label="Password")
-    email = forms.EmailField(required=False, label="Email Address")
+    email = forms.EmailField(required=False, label="Email")
 
+    # Profile fields
+    PROFILE_CHOICES = [
+        ('WORKER', 'Field Worker'),
+        ('SUPERVISOR', 'Supervisor'),
+    ]
     profile_type = forms.ChoiceField(choices=PROFILE_CHOICES, label="Profile Type")
-    profile_id = forms.CharField(max_length=50, label="Profile ID (e.g., HKS-W01 or HKS-S01)")
     
-    # This field is only relevant for workers, can be made conditional in the template
-    ward_number = forms.CharField(
-        max_length=50, 
-        required=False, 
-        label="Assigned Ward (for Workers)",
-        help_text="Optional. Enter the primary ward ID for this worker (e.g., LSGI-W05)."
-    )
+    # Worker/Supervisor Specific IDs
+    profile_id = forms.CharField(max_length=50, required=True, label="Worker/Supervisor ID (e.g., WKR-101)")
+    
+    # Optional field for the worker's initial ward assignment
+    ward_number = forms.CharField(max_length=10, required=False, label="Initial Ward Number (For Worker)")
+    
+    # Custom cleaning for profile_id to prevent duplicates across both tables
+    def clean_profile_id(self):
+        from workers.models import WorkerProfile, SupervisorProfile # Import inside method to avoid circular dependency
 
-    def clean_username(self):
-        # Ensure the username is unique
-        from django.contrib.auth.models import User
-        username = self.cleaned_data.get('username')
-        if User.objects.filter(username=username).exists():
-            raise forms.ValidationError("A user with this username already exists.")
-        return username
+        profile_id = self.cleaned_data['profile_id']
+        # Check if ID is already in use for either profile type
+        if WorkerProfile.objects.filter(worker_id=profile_id).exists() or \
+           SupervisorProfile.objects.filter(supervisor_id=profile_id).exists():
+            raise forms.ValidationError("This Profile ID is already in use.")
+        return profile_id
+
+
+
+
+
+
+
+
+
+
+

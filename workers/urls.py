@@ -1,9 +1,13 @@
 # workers/urls.py
 from django.urls import path
 from . import views
+# workers/urls.py (Add this import at the top)
+from django.views.generic.base import RedirectView
 
 urlpatterns = [
     # Authentication paths
+    path('', RedirectView.as_view(pattern_name='worker_login', permanent=False)),
+
     path('login/', views.worker_login, name='worker_login'),
     path('logout/', views.worker_logout, name='worker_logout'),
 
