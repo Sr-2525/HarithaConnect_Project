@@ -26,9 +26,9 @@ class BinFullAlert(models.Model):
     resident = models.ForeignKey(ResidentProfile, on_delete=models.CASCADE)
     alert_time = models.DateTimeField(default=timezone.now)
     # Storing the photo in the 'media/alert_proofs/' folder
-    photo_proof = models.ImageField(upload_to='alert_proofs/') 
+    photo_proof = models.ImageField(upload_to='alert_proofs/', help_text="Upload photo proof (Max size: 5 MB).") 
     location_detail = models.CharField(max_length=100, default='Household Bin')
-
+   
     STATUS_CHOICES = [
         ('PENDING', 'Pending Pickup'),
         ('ASSIGNED', 'Worker Assigned'),
@@ -89,6 +89,7 @@ class Payment(models.Model):
     receipt_photo = models.ImageField(
         upload_to='payment_receipts/', 
         null=True, # Allow null initially
+        help_text="Upload photo proof of the receipt (Max size: 5 MB).",
         blank=True # Allow blank initially, required in form only for offline
     )
 
@@ -129,3 +130,25 @@ class BillingDue(models.Model):
     class Meta:
         # Ensures a resident is only billed once for a given month/year
         unique_together = ('resident', 'billed_date')
+
+
+# residents/models.py (Add this new model, preferably near BillingDue)
+
+# --- No Collection Needed ---
+class NoCollectionRequest(models.Model):
+    resident = models.ForeignKey(ResidentProfile, on_delete=models.CASCADE)
+    collection_month = models.IntegerField()
+    collection_year = models.IntegerField()
+    reason = models.CharField(
+        max_length=100, 
+        choices=[('VACATION', 'Away/Vacation'), ('LOW', 'Low Waste Volume'), ('OTHER', 'Other')],
+        default='LOW'
+    )
+    submission_date = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"No Collection for {self.resident.household_id} ({self.collection_month}/{self.collection_year})"
+
+    class Meta:
+        # Crucial: Prevent double submissions for the same month
+        unique_together = ('resident', 'collection_month', 'collection_year')

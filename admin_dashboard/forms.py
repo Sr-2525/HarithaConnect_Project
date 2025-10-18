@@ -56,14 +56,6 @@ class DailyTaskAssignmentForm(forms.Form):
         label="Target Date"
     )
 
-    house_start = forms.CharField(
-        max_length=10, 
-        label="Household Range Start (e.g., H1)"
-    )
-    house_end = forms.CharField(
-        max_length=10, 
-        label="Household Range End (e.g., H50)"
-    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

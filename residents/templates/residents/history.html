@@ -4,6 +4,25 @@
 
 {% block content %}
     <h1>Your Activity History</h1>
+    
+    <div style="background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #ddd;">
+        <form method="get" action="{% url 'resident_history' %}" style="display: flex; gap: 20px; align-items: center;">
+            <label for="start_date" style="font-weight: bold;">Filter by Date:</label>
+            
+            <input type="date" id="start_date" name="start_date" value="{{ start_date|default:'' }}" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            
+            <label>to</label>
+            
+            <input type="date" id="end_date" name="end_date" value="{{ end_date|default:'' }}" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            
+            <button type="submit" style="padding: 8px 15px; background-color: #1e8449; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                Apply Filter
+            </button>
+            <a href="{% url 'resident_history' %}" style="text-decoration: none; color: #777;">Clear Filter</a>
+            
+            <input type="hidden" name="tab" id="active-tab-input" value="{{ request.GET.tab|default:'alerts' }}">
+        </form>
+    </div>
     <p>A complete timeline of all your alerts, complaints, and payment records.</p>
 
     {% comment %} Simple CSS for the tab navigation {% endcomment %}
@@ -25,14 +44,16 @@
         }
         .tab-content table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         .tab-content th, .tab-content td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        .tab-content th { background-color: #f2f2f2; }
+        .tab-content th { background-color: #e8f5e9; color: #333; } /* Updated header color */
     </style>
 
-    {% comment %} Tab Navigation - We will use URL parameters to switch views. {% endcomment %}
+    {% comment %} Tab Navigation - Now includes current filters {% endcomment %}
     <div class="tab-nav">
-        <a href="?tab=alerts" id="alerts-tab">Bin Alerts ({{ alerts.count }})</a>
-        <a href="?tab=complaints" id="complaints-tab">Complaints ({{ complaints.count }})</a>
-        <a href="?tab=payments" id="payments-tab">Payments ({{ payments.count }})</a>
+        <a href="{% url 'resident_history' %}?tab=alerts{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" id="alerts-tab">Bin Alerts ({{ alerts.count }})</a>
+        
+        <a href="{% url 'resident_history' %}?tab=complaints{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" id="complaints-tab">Complaints ({{ complaints.count }})</a>
+        
+        <a href="{% url 'resident_history' %}?tab=payments{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" id="payments-tab">Payments ({{ payments.count }})</a>
     </div>
 
     <div class="tab-content">
@@ -64,7 +85,7 @@
                     </tbody>
                 </table>
             {% else %}
-                <p>You have not submitted any complaints yet.</p>
+                <p>You have not submitted any complaints yet (or none found in range).</p>
             {% endif %}
 
         {% elif request.GET.tab == 'payments' %}
@@ -89,14 +110,13 @@
                             <td>{{ payment.amount }}</td>
                             <td>{% if payment.is_paid_online %}Online{% else %}Cash (Reported){% endif %}</td>
                             <td>{{ payment.receipt_number|default:"N/A" }}</td>
-                            <td>{{ payment.get_payment_status }}</td>
-                            <td>{{ payment.payment_date|date:"Y-m-d" }}</td>
+                            <td>{{ payment.get_payment_status }}</td> <td>{{ payment.payment_date|date:"Y-m-d" }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             {% else %}
-                <p>No payment records found.</p>
+                <p>No payment records found (or none found in range).</p>
             {% endif %}
 
         {% else %} 
@@ -124,18 +144,30 @@
                     </tbody>
                 </table>
             {% else %}
-                <p>No bin full alerts have been submitted yet.</p>
+                <p>No bin full alerts have been submitted yet (or none found in range).</p>
             {% endif %}
 
         {% endif %}
     </div>
 
-    {% comment %} Simple script to highlight the active tab {% endcomment %}
+    {% comment %} Script to highlight the active tab and ensure filters are maintained on click {% endcomment %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
+            // Read active tab from URL (defaults to 'alerts')
             const activeTab = urlParams.get('tab') || 'alerts'; 
-            document.getElementById(activeTab + '-tab').classList.add('active');
+            
+            // Highlight the active tab link
+            const activeLink = document.getElementById(activeTab + '-tab');
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+
+            // Ensure hidden input tracks the active tab for the main filter form submission
+            const hiddenInput = document.getElementById('active-tab-input');
+            if (hiddenInput) {
+                hiddenInput.value = activeTab;
+            }
         });
     </script>
 

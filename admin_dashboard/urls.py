@@ -1,25 +1,24 @@
 
 
-# admin_dashboard/urls.py (Verify/Update)
 from django.urls import path
 from . import views
 
 urlpatterns = [
-    # Main Monitoring Dashboard
+    # 1. AUTHENTICATION ENTRY POINT (Must be first for clean flow)
+
+    path('login/', views.admin_login, name='admin_login'),
+    # 2. MAIN MONITORING DASHBOARD (The root of the app: /dashboard-admin/)
     path('', views.admin_monitoring_dashboard, name='admin_monitoring_dashboard'),
     
-    # Task Generation/Scheduling
-    path('generate-schedule/', views.generate_monthly_schedule, name='generate_monthly_schedule'), 
-    
-    # CRITICAL FIX: Ward and Assignment Management Interface
-    # Ensure this line is present with the correct name:
+    # 3. MANAGEMENT WORKFLOWS
     path('ward-management/', views.ward_assignment_management, name='ward_assignment_management'), 
+    path('generate-schedule/', views.generate_monthly_schedule, name='generate_monthly_schedule'), 
+    path('assign-daily/', views.assign_daily_task, name='assign_daily_task'),
     
-    # User Creation Interface
-    path('user-onboard/', views.user_onboarding, name='user_onboarding'),
-    
-    # Custom Action Pages
+    # 4. RESOLUTION & FINANCIAL ACTIONS
     path('priority-pickup/', views.priority_pickup_management, name='priority_pickup_management'),
     path('complaint-resolution/', views.complaint_resolution, name='complaint_resolution'),
-    path('assign-daily/', views.assign_daily_task, name='assign_daily_task'),
+    path('unconfirmed-payments/', views.unconfirmed_payments_manager, name='unconfirmed_payments_manager'), 
+    path('overdue-bills-manager/', views.overdue_bills_manager, name='overdue_bills_manager'), 
+    path('monthly-report/', views.monthly_report, name='monthly_report'),
 ]

@@ -28,7 +28,7 @@
     <h2>2. Report Offline Payment (Cash Paid to Worker)</h2>
     <p>Use this form only if you have already paid cash to the field worker.</p>
     <div style="border: 1px solid #ccc; padding: 20px; border-radius: 8px;">
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             <table style="width: 100%;">
                 {{ offline_form.as_table }}

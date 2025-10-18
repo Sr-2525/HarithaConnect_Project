@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Unconfirmed Payments Manager</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f4f8; padding: 20px; }
+        h1 { color: #c0392b; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .payment-list { margin-top: 20px; }
+        .payment-item { background: white; border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .payment-item strong { color: #333; }
+        .btn-alert { background-color: #f39c12; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>💸 Unconfirmed Payments Manager</h1>
+    <p>These cash payments were reported by residents but await confirmation by the field worker.</p>
+    <a href="{% url 'admin_monitoring_dashboard' %}" style="color: #3498db;">&larr; Back to Dashboard</a>
+
+    <div class="payment-list">
+        {% if unconfirmed_payments %}
+            {% for payment in unconfirmed_payments %}
+            <div class="payment-item">
+                <p><strong>Household:</strong> {{ payment.resident.household_id }} (Ward : {{ payment.resident.ward_number }})</p>
+                <p><strong>Amount:</strong> <span style="color: #c0392b;">₹{{ payment.amount }}</span> | <strong>Reported:</strong> {{ payment.payment_date|date:"Y-m-d H:i" }}</p>
+                <p><strong>Receipt No:</strong> {{ payment.receipt_number }} | <a href="{% if payment.receipt_photo %}{{ payment.receipt_photo.url }}{% endif %}" target="_blank">View Receipt Proof</a></p>
+                
+                <form method="post" style="margin-top: 10px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="payment_id" value="{{ payment.id }}">
+                    <button type="submit" name="action" value="ALERT_WORKER" class="btn-alert">
+                        Alert Worker to Confirm
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="color: green;">All reported cash payments have been confirmed!</p>
+        {% endif %}
+    </div>
+</body>
+</html>

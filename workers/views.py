@@ -1,24 +1,18 @@
-
-# workers/views.py (at the top)
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
-# ADD THIS LINE:
-from django.utils import timezone  # <-- This is the fix!
+from django.utils import timezone
 from .models import WorkerProfile, CollectionAssignment, WorkerComplaint
-from .forms import CollectionUpdateForm, WorkerComplaintForm # <-- NEW IMPORT
-from residents.models import BinFullAlert, ResidentComplaint, Payment
+from .forms import CollectionUpdateForm, WorkerComplaintForm
+from residents.models import BinFullAlert, ResidentComplaint, Payment, NoCollectionRequest # Added NoCollectionRequest
 
 # --- Helper Function for Worker Check ---
-# This prevents regular users from accessing worker paths
 def is_worker(user):
-    # The user must be logged in AND have an associated WorkerProfile
     return WorkerProfile.objects.filter(user=user).exists()
 
 # --- 1. Authentication Views ---
 
-# workers/views.py (UPDATED worker_login function)
 def worker_login(request):
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -27,13 +21,12 @@ def worker_login(request):
 
         if user is not None:
             try:
-                # **CRUCIAL CHECK:** Only allow login if WorkerProfile exists
+                # CRUCIAL CHECK: Only allow login if WorkerProfile exists
                 profile = user.workerprofile 
                 login(request, user)
                 messages.success(request, f"Welcome, {user.username} (Worker ID: {profile.worker_id})")
                 return redirect('worker_dashboard')
             except WorkerProfile.DoesNotExist:
-                # Fail authentication if profile type does not match
                 messages.error(request, "Access Denied. Your account is not registered as a Field Worker.")
         else:
             messages.error(request, "Invalid username or password.")
@@ -46,58 +39,62 @@ def worker_logout(request):
     messages.success(request, "You have been logged out.")
     return redirect('worker_login')
 
-# --- 2. Dashboard View (Use Case 5: See daily assignment) ---
-# workers/views.py (CORRECTED worker_dashboard function)
+# --- 2. Dashboard View ---
+
 @login_required(login_url='worker_login')
 @user_passes_test(is_worker, login_url='worker_login')
 def worker_dashboard(request):
     worker_profile = request.user.workerprofile
-
-    # Fetch the assignments for today
     today = timezone.localdate()
+    
+    current_month = today.month
+    current_year = today.year
+
+    # --- Task Filtering Logic ---
+    # 1. Get list of households the resident requested to SKIP
+    households_to_skip = NoCollectionRequest.objects.filter(
+        collection_month=current_month,
+        collection_year=current_year
+    ).values_list('resident__household_id', flat=True)
+    
+    # 2. Fetch Daily Assignments, excluding skipped households
     daily_assignments = CollectionAssignment.objects.filter(
         worker=worker_profile,
         assignment_date=today
-    ).order_by('household_id')
+    ).exclude(household_id__in=households_to_skip).order_by('household_id') 
 
-    # Get pending Bin Full Alerts in their area
+    # 3. Get pending Bin Full Alerts (assigned to this worker and not cleared)
     priority_alerts = BinFullAlert.objects.filter(
-    worker_assigned=worker_profile # Filter only for jobs assigned to the current worker
-    ).exclude(status='CLEARED') # Exclude any job that the worker has already finished
+        worker_assigned=worker_profile
+    ).exclude(status='CLEARED') 
 
-
-    # FIX 2: Fetch the count for the dashboard card
+    # 4. Counts for Dashboard Cards
     unconfirmed_payments_count = Payment.objects.filter(
         is_paid_online=False, 
         worker_who_received_cash__isnull=True
     ).count()
 
-    # FIX 3: Fetch the count for open worker complaints
     open_worker_complaints = WorkerComplaint.objects.filter(worker=worker_profile, status='PENDING').count()
-
-
+    
     context = {
         'worker_profile': worker_profile,
         'today': today,
         'assignments': daily_assignments,
         'priority_alerts': priority_alerts,
-        # FINAL CONTEXT VARIABLES
         'unconfirmed_payments_count': unconfirmed_payments_count,
         'open_worker_complaints': open_worker_complaints,
     }
     return render(request, 'workers/dashboard.html', context)
 
-# --- 3. Collection Status & Complaint Stubs (To be implemented later) ---
 
-# workers/views.py (Complete update_collection_status function)
+# --- 3. Collection Status Update ---
+
 @login_required(login_url='worker_login')
 @user_passes_test(is_worker, login_url='worker_login')
 def update_collection_status(request, assignment_id):
-    # 1. Get the specific assignment or return a 404 error
     assignment = get_object_or_404(CollectionAssignment, id=assignment_id)
     worker_profile = request.user.workerprofile
 
-    # Security Check: Ensure the assignment belongs to the logged-in worker
     if assignment.worker != worker_profile:
         messages.error(request, "Access denied. This assignment is not yours.")
         return redirect('worker_dashboard')
@@ -106,23 +103,17 @@ def update_collection_status(request, assignment_id):
         form = CollectionUpdateForm(request.POST, request.FILES, instance=assignment)
 
         if form.is_valid():
-            # 2. Save the photo proof and update status fields
             updated_assignment = form.save(commit=False)
             updated_assignment.is_collected = True
-            updated_assignment.collection_time = timezone.now() # Record the exact time of collection
+            updated_assignment.collection_time = timezone.now()
             updated_assignment.save()
 
-            # 3. Notification to Resident (We mock this for now)
-            # In a real app, this is where you would send a push/email notification.
-            # Resident User Story: "I want to get notified when waste is collected."
-            messages.success(request, f"Collection for Household {assignment.household_id} marked complete with photo proof. Resident notified!")
-
+            messages.success(request, f"Collection for Household {assignment.household_id} marked complete with photo proof.")
             return redirect('worker_dashboard')
         else:
             messages.error(request, "Please submit the photo proof to complete the collection.")
 
     else:
-        # 4. GET request: If already collected, redirect to dashboard
         if assignment.is_collected:
             messages.warning(request, f"Collection for {assignment.household_id} is already complete.")
             return redirect('worker_dashboard')
@@ -137,15 +128,13 @@ def update_collection_status(request, assignment_id):
     return render(request, 'workers/update_collection.html', context)
 
 
-
-# workers/views.py (Add the new function)
+# --- 4. Alert Detail/Action (Priority Pickup Clear) ---
 
 @login_required(login_url='worker_login')
 @user_passes_test(is_worker, login_url='worker_login')
 def alert_detail_action(request, alert_id):
     worker_profile = request.user.workerprofile
 
-    # Get the alert object, ensuring it's assigned to THIS worker
     alert = get_object_or_404(
         BinFullAlert, 
         id=alert_id, 
@@ -153,7 +142,6 @@ def alert_detail_action(request, alert_id):
     )
 
     if request.method == 'POST':
-        # 1. Action: Worker is confirming the bin is clear
         if alert.status != 'CLEARED':
             alert.status = 'CLEARED'
             alert.save()
@@ -169,7 +157,8 @@ def alert_detail_action(request, alert_id):
     return render(request, 'workers/alert_detail.html', context)
 
 
-# workers/views.py (Complete raise_field_issue function)
+# --- 5. Worker Complaint ---
+
 @login_required(login_url='worker_login')
 @user_passes_test(is_worker, login_url='worker_login')
 def raise_field_issue(request):
@@ -180,8 +169,6 @@ def raise_field_issue(request):
 
         if form.is_valid():
             complaint = form.save(commit=False)
-
-            # Manually assign the worker and set status
             complaint.worker = worker_profile
             complaint.status = 'PENDING'
             complaint.save()
@@ -200,20 +187,19 @@ def raise_field_issue(request):
     }
     return render(request, 'workers/raise_issue.html', context)
 
-# workers/views.py (CORRECTED confirm_offline_payment function)
+# --- 6. Payment Confirmation ---
+
 @login_required(login_url='worker_login')
 @user_passes_test(is_worker, login_url='worker_login')
 def confirm_offline_payment(request):
     worker_profile = request.user.workerprofile
 
-    # 1. Fetch all reported offline payments that are NOT yet confirmed by a worker
     unconfirmed_payments = Payment.objects.filter(
         is_paid_online=False, 
         worker_who_received_cash__isnull=True
     ).order_by('-payment_date')
 
     if request.method == 'POST':
-        # This block handles the submission of a single payment confirmation
         payment_id = request.POST.get('payment_id')
 
         try:
@@ -223,48 +209,57 @@ def confirm_offline_payment(request):
                 payment.worker_who_received_cash = worker_profile
                 payment.save()
 
-                # We redirect to the same page (GET request) to reload the list
                 messages.success(request, f"Confirmed cash payment of ₹{payment.amount} from Household {payment.resident.household_id}.")
             else:
-                messages.error(request, "This payment is either already confirmed or was paid online.")
+                messages.error(request, "This payment is already confirmed.")
 
         except Payment.DoesNotExist:
             messages.error(request, "Payment record not found.")
 
-        return redirect('confirm_offline_payment') # <-- Redirect back to GET request
+        return redirect('confirm_offline_payment')
 
-    # 2. This is the GET request part - it renders the list
     context = {
         'unconfirmed_payments': unconfirmed_payments
     }
     return render(request, 'workers/confirm_payment.html', context)
 
-# workers/views.py (Add the new function)
+
+# --- 7. History View ---
 
 @login_required(login_url='worker_login')
 @user_passes_test(is_worker, login_url='worker_login')
 def worker_history(request):
-    worker_profile = request.user.workerprofile
+    worker_profile = request.user.worker_profile
+    
+    # --- Date Filter Logic ---
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
 
-    # 1. Collection History (All completed assignments)
-    collection_history = CollectionAssignment.objects.filter(
-        worker=worker_profile,
-        is_collected=True
-    ).order_by('-collection_time')
+    # Base queries
+    collection_query = CollectionAssignment.objects.filter(worker=worker_profile, is_collected=True)
+    payment_query = Payment.objects.filter(worker_who_received_cash=worker_profile)
+    complaint_query = WorkerComplaint.objects.filter(worker=worker_profile)
 
-    # 2. Payment Confirmation History (Payments confirmed by this worker)
-    payment_history = Payment.objects.filter(
-        worker_who_received_cash=worker_profile
-    ).order_by('-payment_date')
+    # Apply date filters
+    if start_date_str:
+        collection_query = collection_query.filter(collection_time__gte=start_date_str)
+        payment_query = payment_query.filter(payment_date__gte=start_date_str)
+        complaint_query = complaint_query.filter(submission_time__gte=start_date_str)
+    
+    if end_date_str:
+        collection_query = collection_query.filter(collection_time__lte=end_date_str)
+        payment_query = payment_query.filter(payment_date__lte=end_date_str)
+        complaint_query = complaint_query.filter(submission_time__lte=end_date_str)
 
-    # 3. Worker Complaint History (All complaints raised by this worker)
-    complaint_history = WorkerComplaint.objects.filter(
-        worker=worker_profile
-    ).order_by('-submission_time')
-
+    collection_history = collection_query.order_by('-collection_time')
+    payment_history = payment_query.order_by('-payment_date')
+    complaint_history = complaint_query.order_by('-submission_time')
+    
     context = {
         'collection_history': collection_history,
         'payment_history': payment_history,
         'complaint_history': complaint_history,
+        'start_date': start_date_str,
+        'end_date': end_date_str,
     }
     return render(request, 'workers/history.html', context)

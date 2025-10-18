@@ -1,14 +1,17 @@
 # residents/views.py
-from django.shortcuts import render, redirect
+from decimal import Decimal
+
+from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
+from django.db import transaction  # <-- ADD THIS LINE
+from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
 
-# residents/views.py (Update the import line)
-from .forms import BinFullAlertForm, ResidentComplaintForm, OfflinePaymentForm # <-- ADD OfflinePaymentForm
-from .models import ResidentProfile, BinFullAlert, ResidentComplaint, Payment, BillingDue # Import Payment model too
-# ... other imports
-# ORIGINAL (or similar)
+from .forms import (BinFullAlertForm, ResidentComplaintForm,
+                    OfflinePaymentForm)
+from .models import (BinFullAlert, BillingDue, NoCollectionRequest, Payment,
+                     ResidentComplaint, ResidentProfile)
 
 
 # --- 1. Authentication Views ---
@@ -135,7 +138,10 @@ def alert_bin_full(request):
 # residents/views.py (New function for Use Case 2)
 # residents/views.py (The complete, correct pay_waste_fee function)
 
+# residents/views.py (The complete, corrected pay_waste_fee function)
+
 @login_required(login_url='resident_login')
+@transaction.atomic
 def pay_waste_fee(request):
     try:
         resident_profile = request.user.residentprofile
@@ -143,32 +149,28 @@ def pay_waste_fee(request):
         messages.error(request, "Access Denied: Profile not found.")
         return redirect('resident_dashboard')
         
-    # --- Get the Current Pending Due ---
+    # CRITICAL: current_due_amount is fetched as a Decimal, or set to Decimal('0.00')
     pending_due = BillingDue.objects.filter(
         resident=resident_profile, 
         is_paid=False
     ).order_by('due_date').first()
     
-    if pending_due:
-        current_due_amount = pending_due.amount_due
-    else:
-        current_due_amount = 0.00
+    current_due_amount = pending_due.amount_due if pending_due else Decimal('0.00')
     
-    # --- START: Handle Offline Payment Submission (Your POST block goes here) ---
+    # --- Handle Offline Payment Submission (POST) ---
     if request.method == 'POST':
-        # Check if there is an amount due to be paid against
         if current_due_amount == 0:
             messages.error(request, "You have no outstanding dues to report a payment against.")
             return redirect('pay_waste_fee')
         
-        # IMPORTANT: Pass request.FILES for the photo upload!
-        form = OfflinePaymentForm(request.POST, request.FILES)
+        # Form receives data and files
+        form = OfflinePaymentForm(request.POST, request.FILES) 
         
         if form.is_valid():
-            paid_amount = form.cleaned_data['amount']
+            paid_amount = form.cleaned_data['amount'] # This is a Decimal
             
-            # Check if the reported payment matches the outstanding due amount
-            if paid_amount != current_due_amount:
+            # CRITICAL FIX: Direct comparison of the two Decimal objects
+            if paid_amount != current_due_amount: 
                  messages.error(request, f"Reported amount ({paid_amount}) does not match the outstanding due amount ({current_due_amount}). Please pay the exact amount.")
                  return redirect('pay_waste_fee')
             
@@ -178,23 +180,23 @@ def pay_waste_fee(request):
             payment.is_paid_online = False
             payment.save()
             
-            # CRUCIAL STEP: Mark the corresponding BillingDue record as paid
+            # Mark the corresponding BillingDue record as paid
             if pending_due:
                 pending_due.is_paid = True
                 pending_due.save()
             
-            messages.success(request, f"Offline payment of ₹{paid_amount} reported successfully! Due marked as paid. Worker confirmation pending.")
+            messages.success(request, f"Offline payment of ₹{paid_amount} reported successfully! Worker confirmation pending.")
             return redirect('resident_dashboard')
         else:
+            # If form validation fails (e.g., photo missing, amount malformed)
             messages.error(request, "Error in payment details. Please check the amount, receipt number, and ensure a photo is attached.")
+            # Fall through to render form with errors
     
-    # --- END: Handle Offline Payment Submission ---
-    
-    
-    # --- Handle GET Request (Display the page) ---
+    # --- Handle GET Request (Display the form) ---
     else:
-        # GET request: Display a blank form, pre-filled with the due amount if one exists
-        form = OfflinePaymentForm(initial={'amount': current_due_amount})
+        # Pre-fill the amount, converting Decimal to string for HTML rendering
+        initial_data = {'amount': str(current_due_amount)}
+        form = OfflinePaymentForm(initial=initial_data)
         
     context = {
         'pending_due_amount': current_due_amount,
@@ -202,6 +204,7 @@ def pay_waste_fee(request):
     }
     return render(request, 'residents/pay_waste_fee.html', context)
 
+    
 # --- 3. Use Case 3: Raise Complaint (Stub) ---
 # residents/views.py (Complete raise_complaint function)
 @login_required(login_url='resident_login')
@@ -244,25 +247,86 @@ def raise_complaint(request):
 
 # --- 4. History (Stub) ---
 # residents/views.py (Complete resident_history function)
+# residents/views.py (UPDATED resident_history function)
 @login_required(login_url='resident_login')
 def resident_history(request):
     try:
         resident_profile = request.user.residentprofile
     except ResidentProfile.DoesNotExist:
-        messages.error(request, "Access Denied: Profile not found.")
+        messages.error(request, "Profile not found.")
         return redirect('resident_dashboard')
 
-    # 1. Fetch all records related to the resident, ordered by creation time
-    alerts = BinFullAlert.objects.filter(resident=resident_profile).order_by('-alert_time')
-    complaints = ResidentComplaint.objects.filter(resident=resident_profile).order_by('-submission_time')
-    payments = Payment.objects.filter(resident=resident_profile).order_by('-payment_date')
+    # --- NEW: Get date filters from URL ---
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+    
+    # Start with an empty filter dictionary
+    date_filter = {} 
 
-    # 2. Consolidate and sort all activities for a timeline view (optional, but good practice)
-    # For simplicity, we'll pass the lists separately and display them in different tabs/sections.
+    if start_date_str:
+        # Filter where the date is greater than or equal to the start date
+        date_filter['alert_time__gte'] = start_date_str # Use __gte for dates >=
+        date_filter['submission_time__gte'] = start_date_str 
+        date_filter['payment_date__gte'] = start_date_str 
+    
+    if end_date_str:
+        # Filter where the date is less than or equal to the end date
+        # Django's date range uses __lte (less than or equal)
+        date_filter['alert_time__lte'] = end_date_str
+        date_filter['submission_time__lte'] = end_date_str
+        date_filter['payment_date__lte'] = end_date_str
+    # --- END Date Filter Logic ---
 
+    # Apply the filters to the queries
+    alerts = BinFullAlert.objects.filter(resident=resident_profile, **{'alert_time__range': (date_filter.get('alert_time__gte'), date_filter.get('alert_time__lte'))} if date_filter.get('alert_time__gte') or date_filter.get('alert_time__lte') else {}).order_by('-alert_time')
+    complaints = ResidentComplaint.objects.filter(resident=resident_profile, **{'submission_time__range': (date_filter.get('submission_time__gte'), date_filter.get('submission_time__lte'))} if date_filter.get('submission_time__gte') or date_filter.get('submission_time__lte') else {}).order_by('-submission_time')
+    payments = Payment.objects.filter(resident=resident_profile, **{'payment_date__range': (date_filter.get('payment_date__gte'), date_filter.get('payment_date__lte'))} if date_filter.get('payment_date__gte') or date_filter.get('payment_date__lte') else {}).order_by('-payment_date')
+    
     context = {
         'alerts': alerts,
         'complaints': complaints,
         'payments': payments,
+        'start_date': start_date_str, # Pass back to template for form stickiness
+        'end_date': end_date_str,
     }
     return render(request, 'residents/history.html', context)
+
+# residents/views.py (Add the new view)
+@login_required(login_url='resident_login')
+def no_collection_request(request):
+    try:
+        resident_profile = request.user.residentprofile
+    except ResidentProfile.DoesNotExist:
+        messages.error(request, "Profile not found.")
+        return redirect('resident_dashboard')
+
+    current_month = timezone.now().month
+    current_year = timezone.now().year
+    
+    # Check if request already exists for this month
+    is_submitted = NoCollectionRequest.objects.filter(
+        resident=resident_profile,
+        collection_month=current_month,
+        collection_year=current_year
+    ).exists()
+
+    if request.method == 'POST' and not is_submitted:
+        reason = request.POST.get('reason')
+        
+        NoCollectionRequest.objects.create(
+            resident=resident_profile,
+            collection_month=current_month,
+            collection_year=current_year,
+            reason=reason
+        )
+        
+        # Admin is now notified this collection should be skipped
+        messages.success(request, f"Collection skip request submitted for {current_month}/{current_year}. The worker will not visit.")
+        return redirect('resident_dashboard')
+    
+    context = {
+        'current_month_name': timezone.now().strftime("%B %Y"),
+        'is_submitted': is_submitted,
+        'reasons': NoCollectionRequest.reason.field.choices, # Pass choices to template
+    }
+    return render(request, 'residents/no_collection_request.html', context)

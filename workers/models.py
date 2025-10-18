@@ -77,7 +77,7 @@ class CollectionAssignment(models.Model):
 
     is_collected = models.BooleanField(default=False)
     collection_time = models.DateTimeField(null=True, blank=True)
-    photo_proof = models.ImageField(upload_to='collection_proofs/', null=True, blank=True)
+    photo_proof = models.ImageField(upload_to='collection_proofs/', null=True, blank=True, help_text="Upload photo proof of collection (Max size: 5 MB).")
 
     def __str__(self):
         return f"Task for {self.household_id} by {self.worker.worker_id} on {self.assignment_date}"
@@ -102,7 +102,7 @@ class WorkerComplaint(models.Model):
 
     issue_type = models.CharField(max_length=50, choices=ISSUE_CHOICES) 
     details = models.TextField()
-    proof_file = models.FileField(upload_to='worker_complaint_proofs/', null=True, blank=True)
+    proof_file = models.FileField(upload_to='worker_complaint_proofs/', null=True, blank=True, help_text="Upload photo/video proof of the issue (Max size: 5 MB).")
     status = models.CharField(max_length=20, default='PENDING', choices=[
         ('PENDING', 'Pending Review'),
         ('RESOLVED', 'Resolved')

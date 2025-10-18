@@ -7,35 +7,48 @@
     <p>Household ID: <strong>{{ household_id|default:"N/A (Profile Missing)" }}</strong></p>
     
     <h2 style="margin-top: 30px;">Quick Status & Actions</h2>
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+    
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
         
         <div class="kpi-card" style="border-left: 5px solid #ffc107; background-color: #fffaf0; padding: 20px; border-radius: 8px;">
-            <h3>Pending Alerts</h3>
-            <p style="font-size: 2.5em; color: #ff9800;">{{ pending_alerts }}</p>
-            <a href="{% url 'alert_bin_full' %}" class="action-link" style="background-color: #ffc107; color: #333;">Submit New Alert</a>
+            <h3>🚨 Bin Status & Alerts</h3>
+            {% if pending_alerts > 0 %}
+                <p style="font-size: 2.5em; color: #e74c3c;">{{ pending_alerts }} PENDING</p>
+                <a href="{% url 'alert_bin_full' %}" class="action-link" style="background-color: #e74c3c; color: white;">Review Alert</a>
+            {% else %}
+                <p style="font-size: 2.5em; color: #2ecc71;">Clear</p>
+                <a href="{% url 'alert_bin_full' %}" class="action-link" style="background-color: #ffc107; color: #333;">Submit Alert Now</a>
+            {% endif %}
         </div>
         
         <div class="kpi-card" style="border-left: 5px solid #e74c3c; background-color: #fcebeb; padding: 20px; border-radius: 8px;">
-            <h3>Open Complaints</h3>
-            <p style="font-size: 2.5em; color: #e74c3c;">{{ pending_complaints }}</p>
-            <a href="{% url 'raise_complaint' %}" class="action-link btn-danger">Raise Complaint</a>
+            <h3>💬 Open Complaints</h3>
+            <p style="font-size: 2.5em; color: #e74c3c;">{{ pending_complaints }} OPEN</p>
+            <a href="{% url 'raise_complaint' %}" class="action-link btn-danger">Raise a Complaint</a>
         </div>
+
+        {% if current_due_amount > 0 %}
+            <div class="kpi-card" style="border-left: 5px solid #e74c3c; background-color: #fcebeb; padding: 20px; border-radius: 8px;">
+                <h3>PAYMENT DUE!</h3>
+                <p style="font-size: 2.5em; color: #e74c3c;">₹{{ current_due_amount }} DUE</p>
+                <a href="{% url 'pay_waste_fee' %}" class="action-link btn-danger">PAY NOW</a>
+            </div>
+        {% else %}
+            <div class="kpi-card" style="border-left: 5px solid #2ecc71; background-color: #e8f5e9; padding: 20px; border-radius: 8px;">
+                <h3>Payment Status</h3>
+                <p style="font-size: 2.5em; color: #2ecc71;">✅ Cleared</p>
+                <a href="{% url 'resident_history' %}" class="action-link btn-primary">View History</a>
+            </div>
+        {% endif %}
         
-    {% if current_due_amount > 0 %}
-        <div class="kpi-card" style="border-left: 5px solid #e74c3c; background-color: #fcebeb; padding: 20px; border-radius: 8px;">
-            <h3>PAYMENT DUE!</h3>
-            <p style="font-size: 2.5em; color: #e74c3c;">₹{{ current_due_amount }}</p>
-            <a href="{% url 'pay_waste_fee' %}" class="action-link btn-danger">PAY NOW</a>
+        <div class="kpi-card" style="border-left: 5px solid #7f8c8d; background-color: #f7f7f7; padding: 20px; border-radius: 8px;">
+            <h3>🗓️ Skip This Month's Visit</h3>
+            <p style="font-size: 2.5em; color: #7f8c8d;">No Waste?</p>
+            <a href="{% url 'no_collection_request' %}" class="action-link" style="background-color: #7f8c8d; color: white;">
+                Request Skip
+            </a>
         </div>
-    {% else %}
-        <div class="kpi-card" style="border-left: 5px solid #2ecc71; background-color: #e8f5e9; padding: 20px; border-radius: 8px;">
-            <h3>Payment Status</h3>
-            <p style="font-size: 2.5em; color: #2ecc71;">✅ Cleared</p>
-            <a href="{% url 'resident_history' %}" class="action-link btn-primary">View History</a>
-        </div>
-    {% endif %}
-    </div>
-        
+
     </div>
     
 {% endblock %}

@@ -22,4 +22,6 @@ urlpatterns = [
 
     # History
     path('history/', views.resident_history, name='resident_history'),
+
+    path('no-collection/', views.no_collection_request, name='no_collection_request'), # <-- NEW PATH
 ]

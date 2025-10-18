@@ -1,30 +1,29 @@
-# harithaconnect_project/urls.py
 from django.contrib import admin
 from django.urls import path, include
-from django.views.generic.base import RedirectView # Import this for the redirect
+from django.views.generic.base import RedirectView 
+from django.views.generic import TemplateView
 
 # --- NEW/VERIFICATION IMPORTS ---
 from django.conf import settings
 from django.conf.urls.static import static 
 
 
-# harithaconnect_project/urls.py (Update urlpatterns)
-
 urlpatterns = [
+    
     path('admin/', admin.site.urls),
 
-    # Redirect the root URL (/) to the resident login page
-    path('', RedirectView.as_view(pattern_name='resident_login', permanent=False)),
+    # CORRECT ROOT PATH: Renders the unified home.html template
+    
+    path('', TemplateView.as_view(template_name='home.html'), name='home'),
+
+    # Removed the conflicting path('', RedirectView...)
 
     path('residents/', include('residents.urls')),
 
-    # NEW: Include all URLs from the workers app under the 'workers/' prefix
-    path('workers/', include('workers.urls')), # <-- ADD THIS LINE
+    path('workers/', include('workers.urls')),
 
-    # harithaconnect_project/urls.py (Ensure this is in urlpatterns)
     path('dashboard-admin/', include('admin_dashboard.urls')),
 ]
-
 
 
 # This is essential for serving user-uploaded files (proofs, photos) during development

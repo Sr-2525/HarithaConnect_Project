@@ -18,6 +18,27 @@
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
         th { font-weight: bold; }
         .errorlist { color: #e74c3c; list-style: none; padding: 0; margin-bottom: 10px; }
+        
+        /* Absence Context Styling */
+        .absence-alert {
+            padding: 15px; 
+            margin-bottom: 25px; 
+            border-radius: 8px; 
+            background-color: #ffe0b2; 
+            border: 1px solid #ff9800;
+        }
+        .absence-alert h3 {
+            color: #ff9800; 
+            margin: 0 0 10px;
+        }
+        .absence-alert ul {
+            list-style-type: none; 
+            padding: 0;
+        }
+        .content-wrapper { /* Custom class to manage main content width */
+            max-width: 800px; 
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -27,9 +48,26 @@
         <a href="{% url 'admin_monitoring_dashboard' %}" style="color: #3498db;">&larr; Back to Monitoring Dashboard</a>
     </div>
 
-    <div class="content" style="max-width: 800px; margin-top: 20px;">
-
-        <form method="post" class="form-card">
+    <div class="content-wrapper content">
+        
+        <div class="absence-alert">
+    <h3 style="margin-top: 0;">⚠️ Today's Reported Absences ({{ today|date:"Y-m-d" }})</h3>
+    {% if recent_absences_data %}
+        {% for absence in recent_absences_data %}
+            <p style="font-weight: bold; margin-bottom: 5px;">
+                Worker {{ absence.worker_id }} is Absent (Reason: {{ absence.reason|default:"No details" }}).
+            </p>
+            <p style="margin-bottom: 10px; padding-left: 10px;">
+                — Needs Coverage for: **Ward {{ absence.ward_id }}** <br>
+                — Teammate Available: **{{ absence.teammate }}**
+            </p>
+        {% endfor %}
+        <small style="display: block; margin-top: 15px;">Use the form below to assign urgent tasks in the Ward requiring coverage.</small>
+    {% else %}
+        <p>No worker absences reported today. You are assigning tasks for an emergency route.</p>
+    {% endif %}
+</div>
+<form method="post" class="form-card">
             {% csrf_token %}
             
             {% if form.non_field_errors %}
@@ -48,9 +86,6 @@
             </button>
         </form>
 
-        <p style="margin-top: 30px;">
-            <a href="{% url 'admin_monitoring_dashboard' %}" style="color: #3498db; text-decoration: none;">&larr; Back to Monitoring Dashboard</a>
-        </p>
     </div>
 </body>
 </html>

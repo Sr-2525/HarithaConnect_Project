@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Overdue Bills Manager</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f4f8; padding: 20px; }
+        h1 { color: #9b59b6; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .bill-list { margin-top: 20px; }
+        .bill-item { background: white; border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .bill-item strong { color: #333; }
+        .btn-alert { background-color: #e74c3c; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>⏰ Overdue Bills Manager</h1>
+    <p>These bills are past their due date and remain unpaid. Use the alert function to send a reminder.</p>
+    <a href="{% url 'admin_monitoring_dashboard' %}" style="color: #3498db;">&larr; Back to Dashboard</a>
+
+    <div class="bill-list">
+        {% if overdue_bills %}
+            {% for bill in overdue_bills %}
+            <div class="bill-item">
+                <p><strong>Household:</strong> {{ bill.resident.household_id }} (Ward {{ bill.resident.ward_number }})</p>
+                <p><strong>Amount Due:</strong> <span style="color: #e74c3c;">₹{{ bill.amount_due }}</span></p>
+                <p><strong>Billed Date:</strong> {{ bill.billed_date|date:"F j, Y" }} | <strong>Due Date:</strong> {{ bill.due_date|date:"F j, Y" }}</p>
+                
+                <form method="post" style="margin-top: 10px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="bill_id" value="{{ bill.id }}">
+                    <button type="submit" name="action" value="ALERT_RESIDENT" class="btn-alert">
+                        Send Overdue Alert
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="color: green;">No bills are currently overdue!</p>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haritha Connect - Unified Portal</title>
+    <style>
+        /* BASE & THEME: Using a subtle eco-green/blue gradient */
+        body { 
+            font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            /* Subtle Gradient Background: Clean Eco-Blue to Green */
+            background: linear-gradient(135deg, #e0f2f1 0%, #b3e0c6 100%); 
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            text-align: center;
+            padding: 60px;
+            background: rgba(255, 255, 255, 0.95); /* Semi-transparent white background */
+            border-radius: 20px; /* Softer, modern corners */
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2); 
+            max-width: 1000px;
+            width: 90%;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        /* HEADINGS */
+        h1 {
+            color: #1a5e3a; /* Darker, authoritative Green */
+            margin-bottom: 5px;
+            font-size: 3em;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+        p.tagline {
+            color: #555;
+            margin-bottom: 50px;
+            font-size: 1.3em;
+            font-weight: 300;
+        }
+        
+        /* INTERACTIVE GRID & CARDS */
+        .login-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+        }
+        .portal-card {
+            padding: 35px 20px;
+            border-radius: 18px;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 250px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+        }
+        
+        /* HOVER EFFECT: Lift and Glow */
+        .portal-card:hover {
+            transform: translateY(-8px); /* Noticeable lift */
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.4); /* Strong shadow */
+            opacity: 0.95;
+        }
+        
+        .card-icon {
+            font-size: 4.5em;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .card-title {
+            font-size: 1.6em;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        small {
+            font-size: 0.85em;
+            text-align: center;
+            display: block;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+
+        /* --- Specific Professional Colors --- */
+        .card-resident { 
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); /* Professional Blue for Service */
+        } 
+        .card-worker { 
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); /* Action Green for Field Work */
+        } 
+        .card-admin { 
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); /* Authority Red for Management */
+        } 
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗑️ Haritha Connect</h1>
+        <p class="tagline">Your Gateway to Professional Waste Management Workflows</p>
+
+        <div class="login-grid">
+            
+            <a href="{% url 'resident_login' %}" class="portal-card card-resident">
+                <div class="card-icon">👤</div>
+                <div class="card-title">Resident Portal</div>
+                <small>Pay fees, raise complaints, and track service history.</small>
+            </a>
+
+            <a href="{% url 'worker_login' %}" class="portal-card card-worker">
+                <div class="card-icon">✅</div>
+                <div class="card-title">Worker Portal</div>
+                <small>Execute assigned routes, confirm payments, and report field issues.</small>
+            </a>
+
+            <a href="{% url 'admin_login' %}" class="portal-card card-admin">
+                <div class="card-icon">⚙️</div>
+                <div class="card-title">Admin Management</div>
+                <small>Monitor system health, generate schedules, and orchestrate teams.</small>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

@@ -2,10 +2,14 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages 
 from django.utils import timezone
-from django.db.models import Q # Used for complex queries
+from django.db import models as db_models
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login
 from datetime import timedelta, date
+from decimal import Decimal
+from django.db.models import Q
 
+# Import all forms and models
 from .forms import ScheduleGenerationForm, DailyTaskAssignmentForm, UserOnboardingForm
 from residents.models import BinFullAlert, ResidentComplaint, Payment, BillingDue 
 from workers.models import WorkerProfile, CollectionAssignment, WorkerComplaint, HKSWardAssignment, SupervisorProfile
@@ -15,18 +19,43 @@ from workers.models import WorkerProfile, CollectionAssignment, WorkerComplaint,
 def is_superuser(user):
     return user.is_superuser
 
-# --- 1. Admin Monitoring Dashboard ---
-@login_required(login_url='admin:login')
-@user_passes_test(is_superuser, login_url='admin:login')
+# --- 1. Custom Admin Login ---
+
+def admin_login(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            if user.is_superuser:
+                login(request, user)
+                messages.success(request, f"Welcome, Admin {user.username}.")
+                return redirect('admin_monitoring_dashboard')
+            else:
+                messages.error(request, "Access Denied. Only Superusers can access the Admin Portal.")
+        else:
+            messages.error(request, "Invalid username or password.")
+
+    return render(request, 'admin_dashboard/admin_login.html')
+
+
+# --- 2. Admin Monitoring Dashboard (KPIs and Overview) ---
+
+@login_required(login_url='admin_login')
+@user_passes_test(is_superuser, login_url='admin_login')
 def admin_monitoring_dashboard(request):
     today = timezone.localdate()
 
+    # Workflow Monitoring (KPIs)
     pending_alerts = BinFullAlert.objects.filter(status='PENDING').count()
     pending_complaints_res = ResidentComplaint.objects.filter(status='PENDING').count()
     pending_complaints_wkr = WorkerComplaint.objects.filter(status='PENDING').count()
     unconfirmed_payments = Payment.objects.filter(is_paid_online=False, worker_who_received_cash__isnull=True).count()
     overdue_bills = BillingDue.objects.filter(is_paid=False, due_date__lt=today).count()
-    
+
+    # Collection Progress Today
     total_assignments_today = CollectionAssignment.objects.filter(assignment_date=today).count()
     collected_assignments_today = CollectionAssignment.objects.filter(assignment_date=today, is_collected=True).count()
 
@@ -49,9 +78,10 @@ def admin_monitoring_dashboard(request):
     return render(request, 'admin_dashboard/dashboard.html', context)
 
 
-# --- 2. Generate Monthly Schedule ---
-@login_required(login_url='admin:login')
-@user_passes_test(is_superuser, login_url='admin:login')
+# --- 3. Generate Monthly Schedule (Route Automation) ---
+
+@login_required(login_url='admin_login')
+@user_passes_test(is_superuser, login_url='admin_login')
 def generate_monthly_schedule(request):
     form = ScheduleGenerationForm(request.POST or None)
 
@@ -95,18 +125,12 @@ def generate_monthly_schedule(request):
                 w2_households = daily_households[DAILY_INDIVIDUAL_TARGET:]
                 
                 for household_id in w1_households:
-                    tasks_to_create.append(CollectionAssignment(
-                        worker=workers[0], assignment_date=current_date, household_id=household_id, collection_cycle_day=day + 1
-                    ))
+                    tasks_to_create.append(CollectionAssignment(worker=workers[0], assignment_date=current_date, household_id=household_id, collection_cycle_day=day + 1))
                 for household_id in w2_households:
-                    tasks_to_create.append(CollectionAssignment(
-                        worker=workers[1], assignment_date=current_date, household_id=household_id, collection_cycle_day=day + 1
-                    ))
+                    tasks_to_create.append(CollectionAssignment(worker=workers[1], assignment_date=current_date, household_id=household_id, collection_cycle_day=day + 1))
             else: # Single worker case
                 for household_id in daily_households:
-                    tasks_to_create.append(CollectionAssignment(
-                        worker=workers[0], assignment_date=current_date, household_id=household_id, collection_cycle_day=day + 1
-                    ))
+                    tasks_to_create.append(CollectionAssignment(worker=workers[0], assignment_date=current_date, household_id=household_id, collection_cycle_day=day + 1))
 
         created_tasks = CollectionAssignment.objects.bulk_create(tasks_to_create, ignore_conflicts=True)
         assignments_created = len(created_tasks)
@@ -118,9 +142,10 @@ def generate_monthly_schedule(request):
     return render(request, 'admin_dashboard/schedule_generator.html', context)
 
 
-# --- 3. Priority Pickup Management ---
-@login_required(login_url='admin:login')
-@user_passes_test(is_superuser, login_url='admin:login')
+# --- 4. Priority Pickup Management ---
+
+@login_required(login_url='admin_login')
+@user_passes_test(is_superuser, login_url='admin_login')
 def priority_pickup_management(request):
     pending_alerts = BinFullAlert.objects.filter(status__in=['PENDING', 'ASSIGNED']).order_by('-alert_time')
     all_workers = WorkerProfile.objects.all()
@@ -153,9 +178,10 @@ def priority_pickup_management(request):
     return render(request, 'admin_dashboard/priority_pickup.html', context)
 
 
-# --- 4. Complaint Resolution ---
-@login_required(login_url='admin:login')
-@user_passes_test(is_superuser, login_url='admin:login')
+# --- 5. Complaint Resolution ---
+
+@login_required(login_url='admin_login')
+@user_passes_test(is_superuser, login_url='admin_login')
 def complaint_resolution(request):
     resident_complaints = ResidentComplaint.objects.filter(status__in=['PENDING', 'IN_PROGRESS']).order_by('-submission_time')
     worker_complaints = WorkerComplaint.objects.filter(status='PENDING').order_by('-submission_time')
@@ -187,12 +213,17 @@ def complaint_resolution(request):
     return render(request, 'admin_dashboard/complaint_resolution.html', context)
 
 
-# --- 5. Assign Daily Task (One-Off) ---
-@login_required(login_url='admin:login')
-@user_passes_test(is_superuser, login_url='admin:login')
-def assign_daily_task(request):
-    form = DailyTaskAssignmentForm(request.POST or None)
+# --- 6. Assign Daily Task (One-Off) ---
+ # The form for this view
 
+@login_required(login_url='admin_login')
+@user_passes_test(is_superuser, login_url='admin_login')
+def assign_daily_task(request):
+    today = timezone.localdate()
+    form = DailyTaskAssignmentForm(request.POST or None)
+    absentee_data = [] # Initialize this list
+
+    # --- 1. POST Request Handling (Task Creation) ---
     if request.method == 'POST' and form.is_valid():
         ward_id = form.cleaned_data['ward']
         target_date = form.cleaned_data['target_date']
@@ -203,10 +234,11 @@ def assign_daily_task(request):
             if assignment_config.worker2:
                 workers.append(assignment_config.worker2)
         except HKSWardAssignment.DoesNotExist:
-            messages.error(request, f"Error: No HKS team assigned to Ward {ward_id}.")
+            messages.error(request, f"Error: No HKS team assigned to Ward {ward_id}. Please assign a team first.")
             return redirect('assign_daily_task')
 
-        mock_household_ids = [f"{ward_id}-MOCK-H{i}" for i in range(5)]
+        # Task Creation Logic (Simplified Mock)
+        mock_household_ids = [f"{ward_id}-COVER-H{i}" for i in range(5)]
         tasks_to_create = []
 
         for worker in workers:
@@ -216,7 +248,7 @@ def assign_daily_task(request):
                     assignment_date=target_date,
                     household_id=household_id,
                     is_collected=False,
-                    collection_cycle_day=0
+                    collection_cycle_day=0 
                 ))
 
         created_tasks = CollectionAssignment.objects.bulk_create(tasks_to_create, ignore_conflicts=True)
@@ -225,13 +257,55 @@ def assign_daily_task(request):
         messages.success(request, f"Assigned {tasks_created} quick tasks to the team in {ward_id} for {target_date}.")
         return redirect('admin_monitoring_dashboard')
 
-    context = {'form': form}
+
+    # --- 2. GET Request Handling & Context Preparation ---
+
+    # Fetch recent absence requests for context display
+    recent_absences = WorkerComplaint.objects.filter(
+        issue_type='ABSENCE',
+        status='PENDING',
+        submission_time__date=today
+    ).select_related('worker') 
+    
+    # Process absence data to include Ward and Teammate info
+    for absence in recent_absences:
+        try:
+            # Find the HKS assignment where this worker is involved (primary or secondary)
+            assignment = HKSWardAssignment.objects.get(
+                Q(worker1=absence.worker) | Q(worker2=absence.worker)
+            )
+            # Find the teammate (the one who is NOT the absent worker)
+            if assignment.worker1 == absence.worker and assignment.worker2:
+                teammate_id = assignment.worker2.worker_id
+            elif assignment.worker2 == absence.worker and assignment.worker1:
+                teammate_id = assignment.worker1.worker_id
+            else:
+                teammate_id = 'None'
+                
+            ward_id = assignment.ward_id
+            
+        except HKSWardAssignment.DoesNotExist:
+            ward_id = 'Unassigned/Unknown'
+            teammate_id = 'None'
+
+        absentee_data.append({
+            'worker_id': absence.worker.worker_id,
+            'reason': absence.details,
+            'ward_id': ward_id,
+            'teammate': teammate_id,
+        })
+    
+    context = {
+        'form': form,
+        'recent_absences_data': absentee_data, # Updated context variable name
+        'today': today,
+    }
     return render(request, 'admin_dashboard/assign_daily_task.html', context)
 
+# --- 7. Ward Assignment Management (HKS Matrix View) ---
 
-# --- 6. Ward Assignment Management (HKS Matrix View) ---
-@login_required(login_url='admin:login')
-@user_passes_test(is_superuser, login_url='admin:login')
+@login_required(login_url='admin_login')
+@user_passes_test(is_superuser, login_url='admin_login')
 def ward_assignment_management(request):
     assignments = HKSWardAssignment.objects.all().order_by('ward_id')
     all_workers = WorkerProfile.objects.all()
@@ -245,51 +319,72 @@ def ward_assignment_management(request):
     return render(request, 'admin_dashboard/ward_management.html', context)
 
 
-# --- 7. User Onboarding ---
-@login_required(login_url='admin:login')
-@user_passes_test(is_superuser, login_url='admin:login')
-def user_onboarding(request):
+# --- 8. User Onboarding (Removed, placeholder added for structural completeness) ---
+
+# --- 9. Financial Manager Views ---
+
+# admin_dashboard/views.py (unconfirmed_payments_manager)
+
+# admin_dashboard/views.py (Inside unconfirmed_payments_manager function)
+
+@login_required(login_url='admin_login')
+@user_passes_test(is_superuser, login_url='admin_login')
+def unconfirmed_payments_manager(request):
+    unconfirmed_payments = Payment.objects.filter(
+        is_paid_online=False, 
+        worker_who_received_cash__isnull=True
+    ).order_by('-payment_date')
+
     if request.method == 'POST':
-        form = UserOnboardingForm(request.POST)
-        if form.is_valid():
-            data = form.cleaned_data
-            
-            try:
-                user = User.objects.create_user(
-                    username=data['username'],
-                    password=data['password'],
-                    email=data['email']
-                )
-            except Exception as e:
-                messages.error(request, f"Error creating user: {e}")
-                return redirect('user_onboarding')
+        payment_id = request.POST.get('payment_id')
+        action = request.POST.get('action') 
 
-            if data['profile_type'] == 'WORKER':
-                WorkerProfile.objects.create(
-                    user=user, 
-                    worker_id=data['profile_id'],
-                    assigned_wards=[data['ward_number']] if data['ward_number'] else []
-                )
-            elif data['profile_type'] == 'SUPERVISOR':
-                SupervisorProfile.objects.create(
-                    user=user, 
-                    supervisor_id=data['profile_id']
-                )
+        payment = get_object_or_404(Payment, id=payment_id)
+
+        if action == 'ALERT_WORKER':
+            messages.success(request, f"ALERT SENT! Notification triggered for responsible worker to confirm payment #{payment_id}.")
             
-            messages.success(request, f"User {user.username} created and linked as {data['profile_type']}.")
-            return redirect('admin_monitoring_dashboard')
-        else:
-            messages.error(request, "Form validation failed. Please check all fields.")
+            # Note: We do NOT redirect here yet, we let the outer block handle it.
+            
+        # --- CRITICAL FIX: Ensure REDIRECT is ALWAYS HIT AFTER POST IS DONE ---
+        return redirect('admin_monitoring_dashboard') # <-- Moves control back to the dashboard
+
+    # The rest of the function handles the GET request (displaying the list).
+    context = {
+        'unconfirmed_payments': unconfirmed_payments,
+    }
+    return render(request, 'admin_dashboard/unconfirmed_payments.html', context)
+
+from django.contrib.auth.models import User
+@login_required(login_url='admin_login')
+@user_passes_test(is_superuser, login_url='admin_login')
+def overdue_bills_manager(request):
+    today = timezone.localdate()
     
-    else:
-        form = UserOnboardingForm()
-        
-    context = {'form': form}
-    return render(request, 'admin_dashboard/user_onboarding.html', context)
+    overdue_bills = BillingDue.objects.filter(
+        is_paid=False, 
+        due_date__lt=today
+    ).order_by('due_date')
 
-# --- 8. Monthly Report Placeholder (Not fully implemented) ---
-@login_required(login_url='admin:login')
-@user_passes_test(is_superuser, login_url='admin:login')
+    if request.method == 'POST':
+        bill_id = request.POST.get('bill_id')
+        action = request.POST.get('action')
+        
+        bill = get_object_or_404(BillingDue, id=bill_id)
+        
+        if action == 'ALERT_RESIDENT':
+            messages.warning(request, f"Overdue alert sent to Resident {bill.resident.household_id}.")
+            return redirect('overdue_bills_manager')
+
+    context = {
+        'overdue_bills': overdue_bills,
+    }
+    return render(request, 'admin_dashboard/overdue_bills_manager.html', context)
+
+
+# --- 10. Monthly Report Placeholder ---
+@login_required(login_url='admin_login')
+@user_passes_test(is_superuser, login_url='admin_login')
 def monthly_report(request):
     messages.info(request, "The monthly report feature is not yet implemented.")
     return redirect('admin_monitoring_dashboard')

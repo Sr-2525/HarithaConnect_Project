@@ -32,7 +32,7 @@
         <h2 style="color: #2ecc71;">Current Ward Assignments</h2>
         <p>Use the **Add New Ward Assignment** button to create a new team, or the **Edit** link to modify an existing team (enforces 2-worker rule).</p>
         
-        <a href="{% url 'admin:workers_hkshardassignment_add' %}" style="padding: 10px 15px; background-color: #2ecc71; color: white; text-decoration: none; border-radius: 4px; display: inline-block; margin-bottom: 20px;">
+        <a href="{% url 'admin:workers_hkswardassignment_add' %}" style="padding: 10px 15px; background-color: #2ecc71; color: white; text-decoration: none; border-radius: 4px; display: inline-block; margin-bottom: 20px;">
             **+ Add New Ward Assignment**
         </a>
 
@@ -56,7 +56,7 @@
                     <td>{{ assignment.supervisor.supervisor_id|default:"N/A" }}</td>
                     <td>{{ assignment.service_points_count }}</td>
                     <td>
-                        <a href="{% url 'admin:workers_hkshardassignment_change' assignment.id %}" style="color: #3498db;">
+                        <a href="{% url 'admin:workers_hkswardassignment_change' assignment.id %}" style="color: #3498db;">
                             Edit/Reassign
                         </a>
                     </td>
