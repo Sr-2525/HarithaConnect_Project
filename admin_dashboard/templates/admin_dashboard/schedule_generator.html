@@ -30,13 +30,14 @@
             <a href="{% url 'admin_monitoring_dashboard' %}">Monitoring Dashboard</a>
             <a href="{% url 'admin:index' %}">Django Admin Panel</a>
             <a href="{% url 'resident_logout' %}">Logout</a> 
+            
         </div>
     </div>
 
     <div class="content">
         <h1>🗓️ HKS Route Generation Tool (10-Day Cycle)</h1>
         <p>This tool automatically generates 10 days of collection assignments (approx. 50 households/day per worker) for the team assigned to the selected ward.</p>
-        
+        <a href="{% url 'admin_monitoring_dashboard' %}" style="color: #3498db;">&larr; Back to Monitoring Dashboard</a>
         <form method="post" class="form-card">
             {% csrf_token %}
             

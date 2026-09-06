@@ -108,6 +108,21 @@ class UserOnboardingForm(forms.Form):
         return profile_id
 
 
+# admin_dashboard/forms.py (Add this form)
+class MonthlyReportForm(forms.Form):
+    month = forms.IntegerField(
+        label="Select Month (1-12)",
+        min_value=1,
+        max_value=12,
+        initial=date.today().month,
+    )
+    year = forms.IntegerField(
+        label="Select Year",
+        min_value=2024,
+        initial=date.today().year,
+    )
+
+
 
 
 

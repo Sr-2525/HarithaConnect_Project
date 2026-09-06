@@ -10,7 +10,7 @@ from decimal import Decimal
 from django.db.models import Q
 
 # Import all forms and models
-from .forms import ScheduleGenerationForm, DailyTaskAssignmentForm, UserOnboardingForm
+from .forms import ScheduleGenerationForm, DailyTaskAssignmentForm, UserOnboardingForm, MonthlyReportForm
 from residents.models import BinFullAlert, ResidentComplaint, Payment, BillingDue 
 from workers.models import WorkerProfile, CollectionAssignment, WorkerComplaint, HKSWardAssignment, SupervisorProfile
 
@@ -383,8 +383,55 @@ def overdue_bills_manager(request):
 
 
 # --- 10. Monthly Report Placeholder ---
+# admin_dashboard/views.py (UPDATED monthly_report function)
+
+
 @login_required(login_url='admin_login')
 @user_passes_test(is_superuser, login_url='admin_login')
 def monthly_report(request):
-    messages.info(request, "The monthly report feature is not yet implemented.")
-    return redirect('admin_monitoring_dashboard')
+    # Default to current month/year or use GET parameters if submitted
+    target_month = int(request.GET.get('month', timezone.now().month))
+    target_year = int(request.GET.get('year', timezone.now().year))
+    
+    # Handle Form Submission (if Admin submits a specific month/year)
+    if request.method == 'POST':
+        form = MonthlyReportForm(request.POST)
+        if form.is_valid():
+            target_month = form.cleaned_data['month']
+            target_year = form.cleaned_data['year']
+        # If the form is submitted, we reload the page with GET parameters 
+        # to ensure the report calculation is executed cleanly.
+        return redirect(f"{reverse('monthly_report')}?month={target_month}&year={target_year}")
+
+    # --- Calculation Logic (Uses target_month/year) ---
+    
+    all_assignments = CollectionAssignment.objects.filter(
+        assignment_date__year=target_year,
+        assignment_date__month=target_month
+    )
+    total_tasks = all_assignments.count()
+    completed_tasks = all_assignments.filter(is_collected=True).count()
+    completion_rate = (completed_tasks / total_tasks) * 100 if total_tasks > 0 else 0
+
+    total_revenue = Payment.objects.filter(
+        payment_date__year=target_year,
+        payment_date__month=target_month,
+    ).aggregate(
+        total_collected=db_models.Sum('amount')
+    )['total_collected'] or Decimal('0.00')
+
+    total_resident_complaints = ResidentComplaint.objects.filter(submission_time__year=target_year, submission_time__month=target_month).count()
+    total_worker_issues = WorkerComplaint.objects.filter(submission_time__year=target_year, submission_time__month=target_month).count()
+
+    context = {
+        'form': MonthlyReportForm(initial={'month': target_month, 'year': target_year}), # Pass form for month selection
+        'target_month': date(target_year, target_month, 1).strftime('%B'),
+        'target_year': target_year,
+        'total_tasks': total_tasks,
+        'completed_tasks': completed_tasks,
+        'completion_rate': round(completion_rate, 1),
+        'total_revenue': total_revenue,
+        'total_resident_complaints': total_resident_complaints,
+        'total_worker_issues': total_worker_issues,
+    }
+    return render(request, 'admin_dashboard/monthly_report.html', context)

@@ -5,13 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Haritha Connect - Unified Portal</title>
     <style>
-        /* BASE & THEME: Using a subtle eco-green/blue gradient */
+    
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&family=Roboto:wght@300;400&display=swap');
+        /* BASE & THEME: Cleaner background gradient */
         body { 
-            font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            font-family: 'Roboto', 'Poppins', sans-serif; 
             margin: 0; 
             padding: 0; 
-            /* Subtle Gradient Background: Clean Eco-Blue to Green */
-            background: linear-gradient(135deg, #e0f2f1 0%, #b3e0c6 100%); 
+            /* Subtle, clean eco-gradient */
+            background: linear-gradient(135deg, #b5eee5 0%, #b9ddc7 100%); 
             color: #333;
             display: flex;
             justify-content: center;
@@ -20,27 +22,45 @@
         }
         .container {
             text-align: center;
-            padding: 60px;
-            background: rgba(255, 255, 255, 0.95); /* Semi-transparent white background */
-            border-radius: 20px; /* Softer, modern corners */
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2); 
-            max-width: 1000px;
+            padding: 70px 80px;
+            background: #ffffff;
+            border-radius: 20px;
+            /* Strong, professional shadow */
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25); 
+            max-width: 1100px;
             width: 90%;
-            border: 1px solid rgba(0, 0, 0, 0.05);
+            border: 1px solid #e0e0e0;
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         /* HEADINGS */
+        /* HEADINGS - ATTRACTIVE FONT STYLE */
         h1 {
-            color: #1a5e3a; /* Darker, authoritative Green */
-            margin-bottom: 5px;
-            font-size: 3em;
-            font-weight: 800;
-            letter-spacing: 1px;
+            /* Use the custom font family 'Poppins' */
+            font-family: 'Poppins', sans-serif; 
+            
+            /* Darker, richer green for high contrast */
+            color: #0d4429; 
+            
+            margin-bottom: 8px;
+            font-size: 4.5em; /* Slightly larger */
+            font-weight: 900; /* Extra bold */
+            letter-spacing: 2px; /* Increased spacing for an architectural look */
+            text-transform: uppercase;
+            
+            /* Subtle text shadow for depth */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1); 
         }
+        
         p.tagline {
-            color: #555;
+            color: #666;
             margin-bottom: 50px;
-            font-size: 1.3em;
+            font-size: 1.4em;
             font-weight: 300;
         }
         
@@ -48,58 +68,64 @@
         .login-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 40px;
+            gap: 50px; /* Increased gap for visual space */
         }
         .portal-card {
-            padding: 35px 20px;
-            border-radius: 18px;
+            padding: 40px 20px; /* Increased vertical padding */
+            border-radius: 15px;
             text-decoration: none;
             color: white;
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            min-height: 250px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            min-height: 280px; /* Taller card */
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
             cursor: pointer;
+            position: relative;
         }
         
-        /* HOVER EFFECT: Lift and Glow */
+        /* HOVER EFFECT: Advanced Shadow and border glow */
         .portal-card:hover {
-            transform: translateY(-8px); /* Noticeable lift */
-            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.4); /* Strong shadow */
-            opacity: 0.95;
+            transform: translateY(-10px) scale(1.03); /* More noticeable lift */
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3); 
+            opacity: 1;
+            /* Add subtle border/shadow effect */
+            border: 3px solid rgba(255, 255, 255, 0.5); 
         }
         
         .card-icon {
-            font-size: 4.5em;
-            margin-bottom: 15px;
-            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+            font-size: 5em; /* Larger icons */
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.4); /* Stronger icon shadow */
         }
         .card-title {
-            font-size: 1.6em;
+            font-size: 1.7em; /* More prominent title */
             font-weight: 700;
-            letter-spacing: 0.5px;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+            margin-top: 10px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
         }
         small {
-            font-size: 0.85em;
+            font-size: 0.95em;
             text-align: center;
             display: block;
-            margin-top: 10px;
-            opacity: 0.9;
+            margin-top: 15px;
+            font-weight: 300;
         }
 
-        /* --- Specific Professional Colors --- */
+        /* --- Specific Professional Gradient Colors --- */
         .card-resident { 
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); /* Professional Blue for Service */
+            /* Deep Corporate Blue */
+            background: linear-gradient(135deg, #1f618d 0%, #154360 100%); 
         } 
         .card-worker { 
-            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); /* Action Green for Field Work */
+            /* Vibrant Eco Green */
+            background: linear-gradient(135deg, #2ecc71 0%, #1e8449 100%); 
         } 
         .card-admin { 
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); /* Authority Red for Management */
+            /* Authority Red/Dark Scarlet */
+            background: linear-gradient(135deg, #c0392b 0%, #922b21 100%); 
         } 
     </style>
 </head>
@@ -127,6 +153,7 @@
                 <div class="card-title">Admin Management</div>
                 <small>Monitor system health, generate schedules, and orchestrate teams.</small>
             </a>
+
         </div>
     </div>
 </body>
