@@ -78,7 +78,3 @@ python manage.py runserver
 
 
 This project was developed as a dedicated platform to promote digital innovation and sustainable community development, with complete oversight of design, architecture, and feature planning.
-
-```
-
-```
